@@ -25,7 +25,6 @@ def padronizar_colunas(df):
     )
     return df
 
-# ✅ ALTERADO: Nova função para extrair a potência como número
 def extrair_potencia(valor):
     try:
         if pd.isna(valor) or valor in ["-", ""]:
@@ -47,10 +46,7 @@ st.title("⚡ Calculadora de Projeto Solar — VSS Energia")
 df_tensao = padronizar_colunas(pd.read_csv("municipios_tensao.csv"))
 df_potencia = padronizar_colunas(pd.read_csv("tabela_potencia_maxima.csv"))
 
-# ✅ ALTERADO: Corrigir nome da coluna se tiver espaços
-coluna_potencia = [col for col in df_potencia.columns if "potencia" in col][0]  # encontra dinamicamente
-
-# ✅ ALTERADO: Criar coluna numérica e faixa
+coluna_potencia = [col for col in df_potencia.columns if "potencia" in col][0]
 df_potencia["potencia_max_kwp"] = df_potencia[coluna_potencia].apply(extrair_potencia)
 df_potencia["carga_min"] = 0.0
 df_potencia["carga_max"] = df_potencia["potencia_max_kwp"]
@@ -66,50 +62,44 @@ st.sidebar.write(f"**Tensão disponível:** {tensao}")
 carga = st.sidebar.number_input("Informe a carga instalada (kW):", min_value=0.0, step=0.1)
 ligacao = st.sidebar.radio("Tipo de ligação:", ["Monofásico", "Bifásico", "Trifásico"])
 
-# Validação de tensão
 if "220/127" in tensao and ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Para tensão 220/127 V, use ligação Bifásica ou Trifásica.")
 
-# 🔍 Busca da faixa
-categorias = mapa_ligacao[ligacao]
+# Botão de análise
+if st.sidebar.button("🔍 Gerar Análise"):
 
-df_faixa = df_potencia[
-    (df_potencia["tensao"] == tensao) &
-    (df_potencia["categoria"].isin(categorias)) &
-    (df_potencia["carga_min"] <= carga) &
-    (df_potencia["carga_max"] >= carga)
-]
+    categorias = mapa_ligacao[ligacao]
 
-# 📋 Exibição de dados gerais
-col1, col2, col3 = st.columns(3)
-col1.metric("📍 Cidade", cidade)
-col2.metric("🔌 Tensão disponível", tensao)
-col3.metric("🔧 Ligação escolhida", ligacao)
+    df_faixa = df_potencia[
+        (df_potencia["tensao"] == tensao) &
+        (df_potencia["categoria"].isin(categorias)) &
+        (df_potencia["carga_min"] <= carga) &
+        (df_potencia["carga_max"] >= carga)
+    ]
 
-st.divider()
-st.subheader("📝 Resultados da Análise")
-st.write(f"- **Carga instalada**: {carga:.2f} kW")
+    # 📋 Exibição de dados gerais
+    col1, col2, col3 = st.columns(3)
+    col1.metric("📍 Cidade", cidade)
+    col2.metric("🔌 Tensão disponível", tensao)
+    col3.metric("🔧 Ligação escolhida", ligacao)
 
-# ✅ Resultado
-if not df_faixa.empty:
-    faixa_nome = df_faixa.iloc[0]["categoria"]
-    potencia_max = df_faixa.iloc[0][coluna_potencia]
+    st.divider()
+    st.subheader("📝 Resultados da Análise")
+    st.write(f"- **Carga instalada**: {carga:.2f} kW")
 
-    st.write(f"- **Faixa identificada**: {faixa_nome}")
-    st.subheader("🔆 Potência máxima permitida para geração solar")
-    st.success(f"{potencia_max}")
-    st.success("✅ Tudo ok para continuar o projeto de energia solar.")
-else:
-    st.write("- **Faixa identificada**: ❌ Não encontrada")
-    st.error("❌ Não foi possível determinar a faixa adequada para os parâmetros informados.")
-    potencia_max = None
+    if not df_faixa.empty:
+        faixa_nome = df_faixa.iloc[0]["categoria"]
+        potencia_max = df_faixa.iloc[0][coluna_potencia]
 
-# Potência permitida
-if potencia_max:
-    st.subheader("🔆 Potência máxima permitida para geração solar")
-    st.success(f"{potencia_max}")
-else:
-    st.subheader("🔆 Potência máxima permitida para geração solar")
-    st.error("Dados não disponíveis para essa combinação.")
-    
-st.caption("Desenvolvido por Vitória ⚡ | VSS Energia Inteligente")
+        st.write(f"- **Faixa identificada**: {faixa_nome}")
+        st.subheader("🔆 Potência máxima permitida para geração solar")
+        st.success(f"{potencia_max}")
+        st.success("✅ Tudo ok para continuar o projeto de energia solar.")
+    else:
+        st.write("- **Faixa identificada**: ❌ Não encontrada")
+        st.error("❌ Não foi possível determinar a faixa adequada para os parâmetros informados.")
+        st.subheader("🔆 Potência máxima permitida para geração solar")
+        st.error("Dados não disponíveis para essa combinação.")
+
+    st.caption("Desenvolvido por Vitória ⚡ | VSS Energia Inteligente")
+
