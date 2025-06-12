@@ -26,10 +26,24 @@ def padronizar_colunas(df):
     )
     return df
 
+# Mapeamento de tipo de ligação para categoria
+mapa_ligacao = {
+    "Monofásico": ["M0", "M1", "M2", "M3"],
+    "Bifásico": ["B0", "B1"],
+    "Trifásico": ["T0", "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"]
+}
+
+# Função auxiliar para extrair intervalo
+def extrair_intervalo(campo):
+    if pd.isna(campo) or campo == "-":
+        return 0.0, float('inf')
+    partes = campo.replace(" ", "").split("-")
+    return float(partes[0]), float(partes[1])
+
 # Título
 st.title("⚡ Calculadora de Projeto Solar — VSS Energia")
 
-# Carregar dados e padronizar colunas
+# Carregar dados
 df_tensao = padronizar_colunas(pd.read_csv("municipios_tensao.csv"))
 df_disjuntor = padronizar_colunas(pd.read_csv("tabela_disjuntores.csv"))
 df_potencia = padronizar_colunas(pd.read_csv("tabela_potencia_maxima.csv"))
@@ -50,17 +64,20 @@ ligacao = st.sidebar.radio("Tipo de ligação:", ["Monofásico", "Bifásico", "T
 if "220/127" in tensao and ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Inversor solar exige no mínimo ligação bifásica em 220/127 V.")
 
-# Cálculo da faixa conforme disjuntor
+# Preparar disjuntores
+categorias_aceitas = mapa_ligacao[ligacao]
+df_disjuntor["carga_min"], df_disjuntor["carga_max"] = zip(*df_disjuntor["carga instalada kw"].map(extrair_intervalo))
+
 df_filtro = df_disjuntor[
     (df_disjuntor["tensao"] == tensao) &
-    (df_disjuntor["ligacao"] == ligacao) &
-    (df_disjuntor["carga_min_kw"] <= carga) &
-    (df_disjuntor["carga_max_kw"] >= carga)
+    (df_disjuntor["categoria"].str.strip().isin(categorias_aceitas)) &
+    (df_disjuntor["carga_min"] <= carga) &
+    (df_disjuntor["carga_max"] >= carga)
 ]
 
 if not df_filtro.empty:
-    faixa = df_filtro.iloc[0]["faixa"]
-    disjuntor = df_filtro.iloc[0]["disjuntor_a"]
+    faixa = df_filtro.iloc[0]["categoria"]
+    disjuntor = df_filtro.iloc[0]["disjuntora"]
 else:
     faixa = "Não encontrada"
     disjuntor = "N/A"
@@ -91,4 +108,5 @@ st.subheader("🔆 Potência máxima permitida para geração solar:")
 st.success(f"👉 {potencia_max} kWp" if potencia_max != "N/A" else "Dados não encontrados para os parâmetros informados.")
 
 st.caption("Desenvolvido por Vitória ⚡ | VSS Energia Inteligente")
+
 
