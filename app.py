@@ -25,11 +25,14 @@ def padronizar_colunas(df):
     )
     return df
 
-def extrair_intervalo(campo):
-    if pd.isna(campo) or campo == "-" or campo == "":
-        return 0.0, float('inf')
-    partes = campo.replace(" ", "").split("-")
-    return float(partes[0]), float(partes[1])
+# ✅ ALTERADO: Nova função para extrair a potência como número
+def extrair_potencia(valor):
+    try:
+        if pd.isna(valor) or valor in ["-", ""]:
+            return 0.0
+        return float(valor.replace("kWp", "").replace(",", ".").strip())
+    except:
+        return 0.0
 
 mapa_ligacao = {
     "Monofásico": ["M0", "M1", "M2", "M3"],
@@ -43,6 +46,14 @@ st.title("⚡ Calculadora de Projeto Solar — VSS Energia")
 # Carregamento de dados
 df_tensao = padronizar_colunas(pd.read_csv("municipios_tensao.csv"))
 df_potencia = padronizar_colunas(pd.read_csv("tabela_potencia_maxima.csv"))
+
+# ✅ ALTERADO: Corrigir nome da coluna se tiver espaços
+coluna_potencia = [col for col in df_potencia.columns if "potencia" in col][0]  # encontra dinamicamente
+
+# ✅ ALTERADO: Criar coluna numérica e faixa
+df_potencia["potencia_max_kwp"] = df_potencia[coluna_potencia].apply(extrair_potencia)
+df_potencia["carga_min"] = 0.0
+df_potencia["carga_max"] = df_potencia["potencia_max_kwp"]
 
 # Sidebar
 st.sidebar.image("imagens/logo.png", width=200)
@@ -61,7 +72,6 @@ if "220/127" in tensao and ligacao == "Monofásico":
 
 # 🔍 Busca da faixa
 categorias = mapa_ligacao[ligacao]
-df_potencia[["carga_min", "carga_max"]] = df_potencia["Carga Instalada (kW)"].map(extrair_intervalo).apply(pd.Series)
 
 df_faixa = df_potencia[
     (df_potencia["tensao"] == tensao) &
@@ -83,7 +93,7 @@ st.write(f"- **Carga instalada**: {carga:.2f} kW")
 # ✅ Resultado
 if not df_faixa.empty:
     faixa_nome = df_faixa.iloc[0]["categoria"]
-    potencia_max = df_faixa.iloc[0]["potência  maxima de geração"]
+    potencia_max = df_faixa.iloc[0][coluna_potencia]
 
     st.write(f"- **Faixa identificada**: {faixa_nome}")
     st.subheader("🔆 Potência máxima permitida para geração solar")
@@ -92,6 +102,8 @@ if not df_faixa.empty:
 else:
     st.write("- **Faixa identificada**: ❌ Não encontrada")
     st.error("❌ Não foi possível determinar a faixa adequada para os parâmetros informados.")
+    potencia_max = None
+
 # Potência permitida
 if potencia_max:
     st.subheader("🔆 Potência máxima permitida para geração solar")
@@ -101,6 +113,3 @@ else:
     st.error("Dados não disponíveis para essa combinação.")
     
 st.caption("Desenvolvido por Vitória ⚡ | VSS Energia Inteligente")
-
-
-
