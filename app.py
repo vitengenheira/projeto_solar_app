@@ -61,7 +61,7 @@ if "220/127" in tensao and ligacao == "Monofásico":
 
 # 🔍 Busca da faixa
 categorias = mapa_ligacao[ligacao]
-df_potencia[["carga_min", "carga_max"]] = df_potencia["faixa"].map(extrair_intervalo).apply(pd.Series)
+df_potencia[["carga_min", "carga_max"]] = df_potencia["categoria"].map(extrair_intervalo).apply(pd.Series)
 
 df_faixa = df_potencia[
     (df_potencia["tensao"] == tensao) &
