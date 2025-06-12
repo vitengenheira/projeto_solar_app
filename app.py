@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import unicodedata
 
 st.set_page_config(page_title="Calculadora Solar Inteligente", page_icon="⚡", layout="wide")
 
@@ -13,25 +14,32 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Função para padronizar nomes de colunas
+def padronizar_colunas(df):
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.lower()
+        .str.normalize('NFKD')  # remove acentos
+        .str.encode('ascii', errors='ignore')
+        .str.decode('utf-8')
+    )
+    return df
+
 # Título
 st.title("⚡ Calculadora de Projeto Solar — VSS Energia")
 
-# Carregar dados
-df_tensao = pd.read_csv("municipios_tensao.csv")
-df_disjuntor = pd.read_csv("tabela_disjuntores.csv")
-df_potencia = pd.read_csv("tabela_potencia_maxima.csv")
-
-# Corrigir nomes de colunas (sem alterar arquivos)
-df_disjuntor.columns = [col.strip() for col in df_disjuntor.columns]
-df_potencia.columns = [col.strip() for col in df_potencia.columns]
-df_tensao.columns = [col.strip() for col in df_tensao.columns]
+# Carregar dados e padronizar colunas
+df_tensao = padronizar_colunas(pd.read_csv("municipios_tensao.csv"))
+df_disjuntor = padronizar_colunas(pd.read_csv("tabela_disjuntores.csv"))
+df_potencia = padronizar_colunas(pd.read_csv("tabela_potencia_maxima.csv"))
 
 # Sidebar
 st.sidebar.image("imagens/logo.png", width=200)
 st.sidebar.header("Parâmetros do Projeto")
 
-cidade = st.sidebar.selectbox("Selecione a cidade:", sorted(df_tensao["Municipio"].unique()))
-tensao = df_tensao.loc[df_tensao["Municipio"] == cidade, "Tensao"].values[0]
+cidade = st.sidebar.selectbox("Selecione a cidade:", sorted(df_tensao["municipio"].unique()))
+tensao = df_tensao.loc[df_tensao["municipio"] == cidade, "tensao"].values[0]
 
 st.sidebar.write(f"**Tensão disponível:** {tensao}")
 
@@ -44,24 +52,24 @@ if "220/127" in tensao and ligacao == "Monofásico":
 
 # Cálculo da faixa conforme disjuntor
 df_filtro = df_disjuntor[
-    (df_disjuntor["Tensao"] == tensao) &
-    (df_disjuntor["Ligacao"] == ligacao) &
-    (df_disjuntor["Carga_Min_kW"] <= carga) &
-    (df_disjuntor["Carga_Max_kW"] >= carga)
+    (df_disjuntor["tensao"] == tensao) &
+    (df_disjuntor["ligacao"] == ligacao) &
+    (df_disjuntor["carga_min_kw"] <= carga) &
+    (df_disjuntor["carga_max_kw"] >= carga)
 ]
 
 if not df_filtro.empty:
-    faixa = df_filtro.iloc[0]["Faixa"]
-    disjuntor = df_filtro.iloc[0]["Disjuntor_A"]
+    faixa = df_filtro.iloc[0]["faixa"]
+    disjuntor = df_filtro.iloc[0]["disjuntor_a"]
 else:
     faixa = "Não encontrada"
     disjuntor = "N/A"
 
 # Buscar potência máxima de geração
-df_pot = df_potencia[df_potencia["Faixa"] == faixa]
+df_pot = df_potencia[df_potencia["faixa"] == faixa]
 
 if not df_pot.empty:
-    potencia_max = df_pot.iloc[0]["Potencia_Max_kWp"]
+    potencia_max = df_pot.iloc[0]["potencia_max_kwp"]
 else:
     potencia_max = "N/A"
 
@@ -83,3 +91,4 @@ st.subheader("🔆 Potência máxima permitida para geração solar:")
 st.success(f"👉 {potencia_max} kWp" if potencia_max != "N/A" else "Dados não encontrados para os parâmetros informados.")
 
 st.caption("Desenvolvido por Vitória ⚡ | VSS Energia Inteligente")
+
