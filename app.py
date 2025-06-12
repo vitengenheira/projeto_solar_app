@@ -21,6 +21,11 @@ df_tensao = pd.read_csv("municipios_tensao.csv")
 df_disjuntor = pd.read_csv("tabela_disjuntores.csv")
 df_potencia = pd.read_csv("tabela_potencia_maxima.csv")
 
+# Corrigir nomes de colunas (sem alterar arquivos)
+df_disjuntor.columns = [col.strip() for col in df_disjuntor.columns]
+df_potencia.columns = [col.strip() for col in df_potencia.columns]
+df_tensao.columns = [col.strip() for col in df_tensao.columns]
+
 # Sidebar
 st.sidebar.image("imagens/logo.png", width=200)
 st.sidebar.header("Parâmetros do Projeto")
@@ -38,10 +43,12 @@ if "220/127" in tensao and ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Inversor solar exige no mínimo ligação bifásica em 220/127 V.")
 
 # Cálculo da faixa conforme disjuntor
-df_filtro = df_disjuntor[(df_disjuntor["Tensao"] == tensao) & 
-                         (df_disjuntor["Ligacao"] == ligacao) & 
-                         (df_disjuntor["Carga_Min_kW"] <= carga) & 
-                         (df_disjuntor["Carga_Max_kW"] >= carga)]
+df_filtro = df_disjuntor[
+    (df_disjuntor["Tensao"] == tensao) &
+    (df_disjuntor["Ligacao"] == ligacao) &
+    (df_disjuntor["Carga_Min_kW"] <= carga) &
+    (df_disjuntor["Carga_Max_kW"] >= carga)
+]
 
 if not df_filtro.empty:
     faixa = df_filtro.iloc[0]["Faixa"]
@@ -76,4 +83,3 @@ st.subheader("🔆 Potência máxima permitida para geração solar:")
 st.success(f"👉 {potencia_max} kWp" if potencia_max != "N/A" else "Dados não encontrados para os parâmetros informados.")
 
 st.caption("Desenvolvido por Vitória ⚡ | VSS Energia Inteligente")
-
