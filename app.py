@@ -229,4 +229,4 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
 else:
     st.info("👈 Preencha os parâmetros na barra lateral e clique em 'Gerar Análise' para começar.")
 
-st.caption("Desenvolvido por Vitória ⚡ | VSS Energia Inteligente")
+st.caption("Desenvolvido por Vitória de Sales Sena ⚡ | VSS Energia Inteligente")
