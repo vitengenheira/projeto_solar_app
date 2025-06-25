@@ -8,7 +8,7 @@ from datetime import datetime
 
 # --- Configuração da Página ---
 st.set_page_config(
-    page_title="Pré-Projeto Solar | VSS Energia",
+    page_title="Pré-Projeto Solar | VSS",
     page_icon="⚡",
     layout="wide"
 )
@@ -48,7 +48,7 @@ class PDF(FPDF):
         self.set_text_color(*self.secondary_color)
         self.cell(0, 10, "Relatório de Pré-Análise Solar", 0, 1, "C")
         self.set_font("Arial", "I", 10)
-        self.set_text_color(*self.gray_color) # CORREÇÃO: Usando tupla de cor
+        self.set_text_color(*self.gray_color)
         self.cell(0, 8, f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", 0, 1, "C")
         
         # Linha inferior
@@ -60,7 +60,7 @@ class PDF(FPDF):
     def footer(self):
         self.set_y(-15)
         self.set_font("Arial", "I", 8)
-        self.set_text_color(*self.gray_color) # CORREÇÃO: Usando tupla de cor
+        self.set_text_color(*self.gray_color)
         self.cell(0, 10, f"Página {self.page_no()}", 0, 0, "C")
         self.cell(0, 10, "VSS Energia Inteligente", 0, 0, "R")
         
@@ -147,10 +147,11 @@ def gerar_pdf(cliente, cidade, tensao, ligacao, carga, categoria, disjuntor, pot
         pdf.cell(0, 20, f"{potencia_max}", 1, 1, "C", fill=True)
     else:
         pdf.set_font("Arial", "I", 12)
-        pdf.set_text_color(*pdf.gray_color) # CORREÇÃO: Usando tupla de cor
+        pdf.set_text_color(*pdf.gray_color)
         pdf.cell(0, 20, "Não aplicável para esta categoria", 1, 1, "C", fill=True)
 
-    return pdf.output(dest='S').encode('latin-1')
+    # CORREÇÃO: Gera a saída do PDF diretamente como bytes, que é mais robusto.
+    return pdf.output()
 
 
 # --- Carregamento de Dados ---
@@ -233,7 +234,7 @@ if "220/127" in tensao and tipo_ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Para tensão 220/127V, a ligação deve ser no mínimo Bifásica.")
 
 # --- Lógica Principal e Exibição de Resultados ---
-st.title("⚡ Pré-Projeto Solar — VSS Energia")
+st.title("⚡ Pré-Projeto Solar — VSS")
 
 if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="primary"):
     if not nome_cliente:
@@ -310,4 +311,4 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
 else:
     st.info("👈 Preencha os parâmetros na barra lateral e clique em 'Gerar Análise' para começar.")
 
-st.caption("Desenvolvido por Vitória de Sales Sena ⚡ | VSS Energia Inteligente")
+st.caption("Desenvolvido por Vitória de Sales Sena⚡ | VSS Energia Inteligente")
