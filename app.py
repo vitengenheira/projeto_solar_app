@@ -8,7 +8,7 @@ from datetime import datetime
 
 # --- Configuração da Página ---
 st.set_page_config(
-    page_title="Pré-Projeto Solar | VSS",
+    page_title="Pré-Projeto Solar | VSS Energia",
     page_icon="⚡",
     layout="wide"
 )
@@ -33,6 +33,7 @@ class PDF(FPDF):
         self.secondary_color = (0, 32, 96) # Azul Escuro
         self.text_color = (0, 0, 0)
         self.light_gray = (240, 240, 240)
+        self.gray_color = (128, 128, 128)
 
     def header(self):
         # Logo
@@ -47,7 +48,7 @@ class PDF(FPDF):
         self.set_text_color(*self.secondary_color)
         self.cell(0, 10, "Relatório de Pré-Análise Solar", 0, 1, "C")
         self.set_font("Arial", "I", 10)
-        self.set_text_color(128)
+        self.set_text_color(*self.gray_color) # CORREÇÃO: Usando tupla de cor
         self.cell(0, 8, f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", 0, 1, "C")
         
         # Linha inferior
@@ -59,14 +60,14 @@ class PDF(FPDF):
     def footer(self):
         self.set_y(-15)
         self.set_font("Arial", "I", 8)
-        self.set_text_color(128)
+        self.set_text_color(*self.gray_color) # CORREÇÃO: Usando tupla de cor
         self.cell(0, 10, f"Página {self.page_no()}", 0, 0, "C")
         self.cell(0, 10, "VSS Energia Inteligente", 0, 0, "R")
         
     def section_title(self, title):
         self.set_font("Arial", "B", 14)
         self.set_fill_color(*self.secondary_color)
-        self.set_text_color(255, 255, 255)
+        self.set_text_color(255, 255, 255) # Branco
         self.cell(0, 10, f"  {title}", 0, 1, "L", fill=True)
         self.ln(5)
 
@@ -146,7 +147,7 @@ def gerar_pdf(cliente, cidade, tensao, ligacao, carga, categoria, disjuntor, pot
         pdf.cell(0, 20, f"{potencia_max}", 1, 1, "C", fill=True)
     else:
         pdf.set_font("Arial", "I", 12)
-        pdf.set_text_color(100)
+        pdf.set_text_color(*pdf.gray_color) # CORREÇÃO: Usando tupla de cor
         pdf.cell(0, 20, "Não aplicável para esta categoria", 1, 1, "C", fill=True)
 
     return pdf.output(dest='S').encode('latin-1')
@@ -232,7 +233,7 @@ if "220/127" in tensao and tipo_ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Para tensão 220/127V, a ligação deve ser no mínimo Bifásica.")
 
 # --- Lógica Principal e Exibição de Resultados ---
-st.title("⚡ Pré-Projeto Solar — VSS")
+st.title("⚡ Pré-Projeto Solar — VSS Energia")
 
 if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="primary"):
     if not nome_cliente:
@@ -278,7 +279,7 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
 
                 st.subheader("🔆 Potência Máxima Permitida para Geração")
                 if pd.notna(potencia_max_str) and potencia_max_str.strip() != '-':
-                    st.info(f"Para a categoria **{faixa_nome}**, a potência máxima de geração(estimativa) que pode ser injetada é:")
+                    st.info(f"Para a categoria **{faixa_nome}**, a potência máxima que pode ser injetada é:")
                     st.success(f"## {potencia_max_str}")
                     st.balloons()
                 else:
