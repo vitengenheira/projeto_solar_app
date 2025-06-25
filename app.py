@@ -173,7 +173,7 @@ if "220/127" in tensao and tipo_ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Para tensão 220/127V, a ligação deve ser no mínimo Bifásica para projetos solares.")
 
 # --- Lógica Principal e Exibição de Resultados ---
-st.title("⚡ Pré-Projeto Solar — VSS Energia")
+st.title("⚡ Pré-Projeto Solar — VSS")
 
 if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="primary"):
     if tensao == "Não encontrada":
