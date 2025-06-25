@@ -25,17 +25,19 @@ st.markdown("""
 # --- Funções Utilitárias ---
 
 def padronizar_nome(texto):
-    """Normaliza um texto: remove acentos, espaços extras e converte para minúsculas."""
+    """Normaliza um texto: remove acentos, espaços (incluindo múltiplos) e converte para minúsculas."""
     if not isinstance(texto, str):
         return texto
     # Remove parênteses e o conteúdo dentro deles, como (kW) ou (A)
     texto = re.sub(r'\s*\([^)]*\)', '', texto)
-    return unicodedata.normalize('NFKD', texto)\
-                      .encode('ascii', 'ignore')\
-                      .decode('utf-8')\
-                      .strip()\
-                      .lower()\
-                      .replace(' ', '_')
+    # Normaliza, remove acentos e converte para minúsculas
+    texto_normalizado = unicodedata.normalize('NFKD', texto)\
+                                   .encode('ascii', 'ignore')\
+                                   .decode('utf-8')\
+                                   .strip()\
+                                   .lower()
+    # CORREÇÃO: Substitui qualquer sequência de caracteres de espaço por um único sublinhado
+    return re.sub(r'\s+', '_', texto_normalizado)
 
 def parse_carga_range(range_str):
     """
