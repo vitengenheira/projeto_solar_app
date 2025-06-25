@@ -67,6 +67,10 @@ class PDF(FPDF):
     def add_info_line(self, label, value):
         self.set_font("Arial", "B", 11)
         self.set_text_color(*self.text_color)
+        if value is None:
+            value = "N/A"
+        else:
+            value = str(value)
         self.cell(55, 8, label, 0, 0, "L")
         self.set_font("Arial", "", 11)
         self.multi_cell(0, 8, value, 0, "L")
@@ -129,9 +133,8 @@ def gerar_pdf(cliente, cidade, tensao, ligacao, carga, categoria, disjuntor, pot
         pdf.set_text_color(*pdf.gray_color)
         pdf.cell(0, 20, "Não aplicável para esta categoria", 1, 1, "C", fill=True)
 
-    # ✅ CORREÇÃO AQUI:
     buffer = io.BytesIO()
-    pdf.output(buffer)
+    buffer.write(pdf.output(dest='S').encode('latin1'))
     buffer.seek(0)
     return buffer
 
@@ -171,11 +174,11 @@ def carregar_dados():
         return None, None
     return df_tensao, df_dados_tecnicos
 
+# --- Execução principal ---
 df_tensao, df_dados_tecnicos = carregar_dados()
 if df_tensao is None or df_dados_tecnicos is None:
     st.stop()
 
-# --- Interface ---
 try:
     st.sidebar.image("imagens/logo.png", width=200)
 except Exception:
@@ -197,7 +200,6 @@ tipo_ligacao = st.sidebar.radio("Tipo de ligação:", ["Monofásico", "Bifásico
 if "220/127" in tensao and tipo_ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Para tensão 220/127V, a ligação deve ser no mínimo Bifásica.")
 
-# --- Execução ---
 st.title("⚡ Pré-Projeto Solar — VSS")
 if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="primary"):
     if not nome_cliente:
