@@ -6,7 +6,7 @@ import io
 
 # --- Configuração da Página ---
 st.set_page_config(
-    page_title="Pré-Projeto Solar | VSS Energia",
+    page_title="Pré-Projeto Solar | VSS",
     page_icon="⚡",
     layout="wide"
 )
