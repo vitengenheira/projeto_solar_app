@@ -36,7 +36,7 @@ def padronizar_nome(texto):
                                    .decode('utf-8')\
                                    .strip()\
                                    .lower()
-    # CORREÇÃO: Substitui qualquer sequência de caracteres de espaço por um único sublinhado
+    # Substitui qualquer sequência de caracteres de espaço por um único sublinhado
     return re.sub(r'\s+', '_', texto_normalizado)
 
 def parse_carga_range(range_str):
@@ -95,11 +95,11 @@ def carregar_dados():
     df_disjuntores.columns = [padronizar_nome(col) for col in df_disjuntores.columns]
     df_potencia_max.columns = [padronizar_nome(col) for col in df_potencia_max.columns]
 
-    # Garante que a coluna de tensão é string para a junção
-    df_tensao['tensao'] = df_tensao['tensao'].astype(str).str.strip()
-    df_disjuntores['tensao'] = df_disjuntores['tensao'].astype(str).str.strip()
-    df_potencia_max['tensao'] = df_potencia_max['tensao'].astype(str).str.strip()
-
+    # **CORREÇÃO APLICADA AQUI**
+    # Normaliza a coluna de tensão para garantir correspondência (ex: remove 'V' no final)
+    for df in [df_tensao, df_disjuntores, df_potencia_max]:
+        if 'tensao' in df.columns:
+            df['tensao'] = df['tensao'].astype(str).str.strip().str.replace('V$', '', regex=True)
 
     # Processa a faixa de carga para criar colunas min e max
     if 'carga_instalada' in df_disjuntores.columns:
@@ -212,7 +212,7 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
                 st.write(f"**Disjuntor de Proteção Recomendado**: `{disjuntor} A`")
 
                 st.subheader("🔆 Potência Máxima Permitida para Geração")
-                if potencia_max_str and potencia_max_str.strip() != '-':
+                if pd.notna(potencia_max_str) and potencia_max_str.strip() != '-':
                     st.info(f"Para a categoria **{faixa_nome}**, a potência máxima que pode ser injetada é:")
                     st.success(f"## {potencia_max_str}")
                     st.balloons()
