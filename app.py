@@ -3,7 +3,7 @@ import pandas as pd
 import unicodedata
 
 # Configuração da página
-st.set_page_config(page_title="Calculadora Solar Inteligente", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="Solar Inteligente", page_icon="⚡", layout="wide")
 
 # CSS personalizado
 st.markdown("""
@@ -40,7 +40,7 @@ mapa_ligacao = {
 }
 
 # Título
-st.title("⚡ Calculadora de Projeto Solar — VSS Energia")
+st.title("⚡Pré-Projeto Solar — VSS Energia")
 
 # Carregamento de dados
 df_tensao = padronizar_colunas(pd.read_csv("municipios_tensao.csv"))
