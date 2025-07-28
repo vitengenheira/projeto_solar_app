@@ -8,7 +8,7 @@ from datetime import datetime
 
 # --- Configuração da Página ---
 st.set_page_config(
-    page_title="Pré-Projeto Solar | VSS",
+    page_title="Pré-Projeto Solar",
     page_icon="⚡",
     layout="wide"
 )
@@ -218,4 +218,4 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
 else:
     st.info("👈 Preencha os dados e clique em 'Gerar Análise' para começar.")
 
-st.caption("Desenvolvido por Vitória de Sales Sena ⚡ | VSS Energia Inteligente")
+st.caption("Desenvolvido por Vitória de Sales Sena ⚡")
