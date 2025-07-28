@@ -65,7 +65,6 @@ def parse_potencia_numerica(texto_potencia):
             return None
     return None
 
-# VERSÃO FINAL DA FUNÇÃO DE GERAR PDF
 def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disjuntor, potencia_max, potencia_kit_kwp):
     pdf = FPDF()
     pdf.add_page()
@@ -96,7 +95,6 @@ def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disj
     else:
         pdf.cell(0, 10, "Não há limite de potência definido para esta categoria.", ln=True)
 
-    # --- NOVO BLOCO PARA ESCREVER A VALIDAÇÃO DO KIT NO PDF ---
     if potencia_kit_kwp > 0:
         pdf.ln(5)
         pdf.set_font("Arial", "B", 12)
@@ -112,7 +110,6 @@ def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disj
                 pdf.cell(0, 10, f"REPROVADO: O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp.", ln=True)
         else:
             pdf.cell(0, 10, f"APROVADO: O kit de {potencia_kit_kwp:.2f} kWp é compatível (sem limite definido).", ln=True)
-    # --- FIM DO NOVO BLOCO ---
 
     buffer = io.BytesIO()
     pdf.output(buffer)
@@ -199,7 +196,8 @@ potencia_kit_kwp = st.sidebar.number_input(
 # --- Lógica Principal ---
 st.title("⚡ Pré-Projeto Solar")
 
-if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="primary"):
+# BOTÃO SEM EMOJI PARA GARANTIR
+if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary"):
     if not nome_cliente.strip():
         st.sidebar.warning("Por favor, informe o nome do cliente.")
     elif tensao == "Não encontrada":
@@ -243,65 +241,6 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
                 
                 st.divider()
 
-                if potencia_kit_kwp > 0:
-                    st.subheader("✔️ Validação do Kit do Cliente")
-                    limite_numerico = parse_potencia_numerica(potencia_max_str)
-
-                    if limite_numerico is not None:
-                        if potencia_kit_kwp <= limite_numerico:
-                            st.success(f"**APROVADO:** O kit de {potencia_kit_kwp:.2f} kWp está dentro do limite de {limite_numerico:.2f} kWp.")
-                            st.balloons()
-                        else:
-                            st.error(f"**REPROVADO:** O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp.")
-                    else:
-                        st.success(f"**APROVADO:** O kit de {potencia
-
-if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="primary"):
-    if not nome_cliente.strip():
-        st.sidebar.warning("Por favor, informe o nome do cliente.")
-    elif tensao == "Não encontrada":
-        st.error(f"Não foi possível encontrar dados para '{cidade_selecionada_fmt}'.")
-    else:
-        with st.spinner('Analisando dados...'):
-            categorias_permitidas = mapa_ligacao[tipo_ligacao]
-            df_faixa_encontrada = df_dados_tecnicos[
-                (df_dados_tecnicos["tensao"] == tensao) &
-                (df_dados_tecnicos["categoria"].isin(categorias_permitidas)) &
-                (carga_instalada >= df_dados_tecnicos["carga_min_kw"]) &
-                (carga_instalada <= df_dados_tecnicos["carga_max_kw"])
-            ]
-
-            st.subheader("📋 Resumo dos Parâmetros")
-            col1, col2, col3 = st.columns(3)
-            col1.metric("📍 Cidade", cidade_selecionada_fmt)
-            col2.metric("🔌 Tensão", tensao)
-            col3.metric("🔧 Ligação", tipo_ligacao)
-            st.divider()
-
-            st.subheader("📝 Resultados da Análise")
-            st.write(f"**Carga instalada:** {carga_instalada:.2f} kW")
-
-            if not df_faixa_encontrada.empty:
-                resultado = df_faixa_encontrada.iloc[0]
-                faixa_nome = resultado["categoria"]
-                disjuntor = resultado.get("disjuntor", "N/A")
-                potencia_max_str = resultado.get('potencia_maxima_geracao_str', '-')
-
-                st.success("✅ Análise concluída com sucesso!")
-                st.write(f"**Categoria**: `{faixa_nome}`")
-                st.write(f"**Disjuntor recomendado**: `{disjuntor} A`")
-                
-                # Bloco que mostra a potência máxima (original)
-                if pd.notna(potencia_max_str) and str(potencia_max_str).strip() not in ('', '-'):
-                    st.subheader("🔆 Potência Máxima Permitida para Geração")
-                    st.info(f"Potência máxima para **{faixa_nome}**:")
-                    st.success(f"## {potencia_max_str}")
-                else:
-                    st.warning("Não há limite de potência definido para esta categoria.")
-                
-                st.divider()
-
-                # BLOCO PARA VALIDAR O KIT DO CLIENTE
                 if potencia_kit_kwp > 0:
                     st.subheader("✔️ Validação do Kit do Cliente")
                     limite_numerico = parse_potencia_numerica(potencia_max_str)
@@ -318,7 +257,8 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
                 # --- Download do PDF ---
                 pdf_buffer = gerar_pdf(
                     nome_cliente, cidade_selecionada_fmt, tensao, tipo_ligacao,
-                    carga_instalada, faixa_nome, disjuntor, potencia_max_str
+                    carga_instalada, faixa_nome, disjuntor, potencia_max_str,
+                    potencia_kit_kwp
                 )
                 st.download_button(
                     label="📄 Baixar Relatório em PDF",
