@@ -52,6 +52,21 @@ def parse_carga_range(range_str):
     except:
         return 0.0, 0.0
 
+# NOVA FUNÇÃO para extrair número da potência
+def parse_potencia_numerica(texto_potencia):
+    """Extrai um valor numérico de uma string de potência como '8.8 kWp'."""
+    if not isinstance(texto_potencia, str) or texto_potencia.strip() in ('', '-'):
+        return None
+    try:
+        # Remove "kW", "kVA", "kWp" (ignorando maiúsculas/minúsculas) e espaços
+        texto_limpo = re.sub(r'(?i)\s*(kw|kva|kwp)', '', texto_potencia).strip()
+        # Troca vírgula por ponto para conversão correta
+        texto_limpo = texto_limpo.replace(',', '.')
+        return float(texto_limpo)
+    except (ValueError, TypeError):
+        return None
+
+
 def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disjuntor, potencia_max):
     pdf = FPDF()
     pdf.add_page()
@@ -153,6 +168,17 @@ tipo_ligacao = st.sidebar.radio("Tipo de ligação:", ["Monofásico", "Bifásico
 if "220/127" in tensao and tipo_ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Para tensão 220/127V, use pelo menos Bifásico.")
 
+# NOVO CAMPO PARA O KIT DO CLIENTE
+st.sidebar.header("Dados do Kit Solar")
+potencia_kit_kwp = st.sidebar.number_input(
+    "Potência do Kit (kWp):",
+    min_value=0.0,
+    step=0.01,
+    format="%.2f",
+    help="Informe a potência de pico do kit que planeja instalar."
+)
+
+
 # --- Lógica Principal ---
 st.title("⚡ Pré-Projeto Solar")
 
@@ -188,16 +214,33 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
                 potencia_max_str = resultado.get('potencia_maxima_geracao_str', '-')
 
                 st.success("✅ Análise concluída com sucesso!")
-                st.write(f"**Categoria**: {faixa_nome}")
-                st.write(f"**Disjuntor recomendado**: {disjuntor} A")
-
+                st.write(f"**Categoria**: `{faixa_nome}`")
+                st.write(f"**Disjuntor recomendado**: `{disjuntor} A`")
+                
+                # Bloco que mostra a potência máxima (original)
                 if pd.notna(potencia_max_str) and potencia_max_str.strip() != '-':
                     st.subheader("🔆 Potência Máxima Permitida para Geração")
                     st.info(f"Potência máxima para **{faixa_nome}**:")
                     st.success(f"## {potencia_max_str}")
-                    st.balloons()
                 else:
-                    st.warning("Não há limite de potência definido.")
+                    st.warning("Não há limite de potência definido para esta categoria.")
+                
+                st.divider()
+
+                # NOVO BLOCO PARA VALIDAR O KIT DO CLIENTE
+                if potencia_kit_kwp > 0:
+                    st.subheader("✔️ Validação do Kit do Cliente")
+                    limite_numerico = parse_potencia_numerica(potencia_max_str)
+
+                    if limite_numerico is not None:
+                        if potencia_kit_kwp <= limite_numerico:
+                            st.success(f"**APROVADO:** O kit de {potencia_kit_kwp:.2f} kWp está dentro do limite de {limite_numerico} kWp.")
+                            st.balloons()
+                        else:
+                            st.error(f"**REPROVADO:** O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico} kWp.")
+                    else:
+                        # Se não há limite, o kit é sempre aprovado
+                        st.success(f"**APROVADO:** O kit de {potencia_kit_kwp:.2f} kWp é compatível, pois não há limite de potência para esta categoria.")
 
                 # --- Download do PDF ---
                 pdf_buffer = gerar_pdf(
