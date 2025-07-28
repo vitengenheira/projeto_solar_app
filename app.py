@@ -52,6 +52,18 @@ def parse_carga_range(range_str):
     except:
         return 0.0, 0.0
 
+def parse_potencia_numerica(texto_potencia):
+    """Extrai um valor numérico de uma string de potência como '15 kW'."""
+    if not isinstance(texto_potencia, str) or texto_potencia.strip() == '-':
+        return None # Retorna None se não houver limite definido
+    try:
+        # Remove "kW", "kVA", espaços e troca vírgula por ponto
+        texto_limpo = re.sub(r'(?i)\s*(kw|kva)', '', texto_potencia).strip()
+        texto_limpo = texto_limpo.replace(',', '.')
+        return float(texto_limpo)
+    except (ValueError, TypeError):
+        return None # Retorna None se a conversão falhar
+
 def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disjuntor, potencia_max):
     pdf = FPDF()
     pdf.add_page()
@@ -153,6 +165,16 @@ tipo_ligacao = st.sidebar.radio("Tipo de ligação:", ["Monofásico", "Bifásico
 if "220/127" in tensao and tipo_ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Para tensão 220/127V, use pelo menos Bifásico.")
 
+# NOVO: Adicionar campo para a potência do kit do cliente
+st.sidebar.header("Dados do Sistema Solar")
+potencia_kit_kwp = st.sidebar.number_input(
+    "Potência do Kit Solar (kWp):", 
+    min_value=0.0, 
+    step=0.01, 
+    format="%.2f",
+    help="Informe a potência de pico (kWp) do sistema solar que planeja instalar. Ex: 5.54"
+)
+
 # --- Lógica Principal ---
 st.title("⚡ Pré-Projeto Solar")
 
@@ -191,22 +213,32 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
                 st.write(f"**Categoria**: `{faixa_nome}`")
                 st.write(f"**Disjuntor recomendado**: `{disjuntor} A`")
 
-                if pd.notna(potencia_max_str) and potencia_max_str.strip() != '-':
-                    st.subheader("🔆 Potência Máxima Permitida para Geração")
-                    st.info(f"Potência máxima para **{faixa_nome}**:")
-                    st.success(f"## {potencia_max_str}")
-                    st.balloons()
-                else:
-                    st.warning("Não há limite de potência definido.")
+                # --- LÓGICA DE COMPARAÇÃO DA POTÊNCIA DO KIT ---
+                if potencia_kit_kwp > 0: # Só executa se o usuário inseriu uma potência
+                    st.divider()
+                    st.subheader(f"Comparativo do Kit de {potencia_kit_kwp:.2f} kWp")
+                    
+                    # Usa a nova função para obter o limite numérico
+                    limite_potencia_numerico = parse_potencia_numerica(potencia_max_str)
+
+                    if limite_potencia_numerico is not None:
+                        st.write(f"**Potência máxima permitida para a categoria {faixa_nome}:** {limite_potencia_numerico} kWp")
+                        
+                        if potencia_kit_kwp <= limite_potencia_numerico:
+                            st.success(f"**Aprovado:** A potência do kit ({potencia_kit_kwp:.2f} kWp) está **dentro** do limite permitido.")
+                            st.balloons()
+                        else:
+                            st.error(f"**Reprovado:** A potência do kit ({potencia_kit_kwp:.2f} kWp) **excede** o limite de {limite_potencia_numerico} kWp permitido para esta categoria.")
+                    else:
+                        st.info("**Aprovado:** Não há um limite de potência definido para esta categoria, portanto o kit é compatível.")
 
                 # --- Download do PDF ---
-                pdf_buffer = gerar_pdf(
-                    nome_cliente, cidade_selecionada_fmt, tensao, tipo_ligacao,
-                    carga_instalada, faixa_nome, disjuntor, potencia_max_str
-                )
                 st.download_button(
                     label="📄 Baixar Relatório em PDF",
-                    data=pdf_buffer,
+                    data=gerar_pdf(
+                        nome_cliente, cidade_selecionada_fmt, tensao, tipo_ligacao,
+                        carga_instalada, faixa_nome, disjuntor, potencia_max_str
+                    ),
                     file_name=f"relatorio_{padronizar_nome(nome_cliente)}.pdf",
                     mime="application/pdf",
                     use_container_width=True
