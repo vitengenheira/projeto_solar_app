@@ -52,17 +52,6 @@ def parse_carga_range(range_str):
     except:
         return 0.0, 0.0
 
-def parse_potencia_numerica(texto_potencia):
-    """Extrai um valor numérico de uma string de potência como '15 kW'."""
-    if not isinstance(texto_potencia, str) or texto_potencia.strip() == '-':
-        return None
-    try:
-        texto_limpo = re.sub(r'(?i)\s*(kw|kva)', '', texto_potencia).strip()
-        texto_limpo = texto_limpo.replace(',', '.')
-        return float(texto_limpo)
-    except (ValueError, TypeError):
-        return None
-
 def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disjuntor, potencia_max):
     pdf = FPDF()
     pdf.add_page()
@@ -105,7 +94,7 @@ def carregar_dados():
         df_disjuntores = pd.read_csv("tabela_disjuntores.csv", sep=r'\s*,\s*', engine='python')
         df_potencia_max = pd.read_csv("tabela_potencia_maxima.csv", sep=r'\s*,\s*', engine='python')
     except FileNotFoundError as e:
-        st.error(f"Erro: Arquivo '{e.filename}' não foi encontrado. Verifique se ele está na mesma pasta do seu app.py.")
+        st.error(f"Erro: {e}")
         return None, None
 
     for df in [df_tensao, df_disjuntores, df_potencia_max]:
@@ -164,15 +153,6 @@ tipo_ligacao = st.sidebar.radio("Tipo de ligação:", ["Monofásico", "Bifásico
 if "220/127" in tensao and tipo_ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Para tensão 220/127V, use pelo menos Bifásico.")
 
-st.sidebar.header("Dados do Sistema Solar")
-potencia_kit_kwp = st.sidebar.number_input(
-    "Potência do Kit Solar (kWp):",
-    min_value=0.0,
-    step=0.01,
-    format="%.2f",
-    help="Informe a potência de pico (kWp) do sistema solar que planeja instalar. Ex: 5.54"
-)
-
 # --- Lógica Principal ---
 st.title("⚡ Pré-Projeto Solar")
 
@@ -199,71 +179,43 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
             st.divider()
 
             st.subheader("📝 Resultados da Análise")
-            
+            st.write(f"**Carga instalada:** {carga_instalada:.2f} kW")
+
             if not df_faixa_encontrada.empty:
                 resultado = df_faixa_encontrada.iloc[0]
-                
-                # NOVO: BLOCO DE DEPURAÇÃO INTELIGENTE
-                # Ele verifica se o merge com a tabela de potência máxima falhou para esta categoria
-                if pd.isna(resultado['potencia_maxima_geracao_str']):
-                    st.error(
-                        f"⚠️ Erro no Cruzamento de Dados!",
-                        icon="❗"
-                    )
-                    st.warning(
-                        f"**Alerta de Depuração:** A categoria **{resultado['categoria']}** foi encontrada, mas não foi possível localizar um limite de potência correspondente no arquivo `tabela_potencia_maxima.csv`."
-                        f"\n\n**Solução:** Verifique se a combinação de `tensão` ('{resultado['tensao']}') e `categoria` ('{resultado['categoria']}') existe e está escrita de forma **exatamente idêntica** nos seus dois arquivos: `tabela_disjuntores.csv` e `tabela_potencia_maxima.csv`."
-                    )
-                    st.stop() # Para a execução aqui para o usuário poder corrigir os dados.
-
-                # Se o código continuar, o merge funcionou. A lógica abaixo permanece a mesma.
                 faixa_nome = resultado["categoria"]
                 disjuntor = resultado.get("disjuntor", "N/A")
                 potencia_max_str = resultado.get('potencia_maxima_geracao_str', '-')
 
-                st.write(f"**Carga instalada:** {carga_instalada:.2f} kW")
                 st.success("✅ Análise concluída com sucesso!")
-                st.write(f"**Categoria Encontrada**: `{faixa_nome}`")
-                st.write(f"**Disjuntor Recomendado**: `{disjuntor} A`")
-                st.divider()
+                st.write(f"**Categoria**: {faixa_nome}")
+                st.write(f"**Disjuntor recomendado**: {disjuntor} A")
 
-                # --- LÓGICA DE EXIBIÇÃO E COMPARAÇÃO ---
-                st.subheader("Limite de Geração da Categoria")
-                limite_potencia_numerico = parse_potencia_numerica(potencia_max_str)
-
-                if limite_potencia_numerico is not None:
-                    st.write(f"A potência máxima de geração permitida para a categoria **{faixa_nome}** é:")
-                    st.success(f"## {limite_potencia_numerico} kWp")
+                if pd.notna(potencia_max_str) and potencia_max_str.strip() != '-':
+                    st.subheader("🔆 Potência Máxima Permitida para Geração")
+                    st.info(f"Potência máxima para **{faixa_nome}**:")
+                    st.success(f"## {potencia_max_str}")
+                    st.balloons()
                 else:
-                    st.info(f"A categoria **{faixa_nome}** não possui um limite de geração pré-definido nos dados.")
+                    st.warning("Não há limite de potência definido.")
 
-                if potencia_kit_kwp > 0:
-                    st.subheader(f"Validação do Kit de {potencia_kit_kwp:.2f} kWp")
-                    if limite_potencia_numerico is not None:
-                        if potencia_kit_kwp <= limite_potencia_numerico:
-                            st.success(f"**APROVADO:** O kit está dentro do limite de {limite_potencia_numerico} kWp.")
-                            st.balloons()
-                        else:
-                            st.error(f"**REPROVADO:** O kit excede o limite de {limite_potencia_numerico} kWp permitido.")
-                    else:
-                        st.success("**APROVADO:** Como não há limite definido para esta categoria, o kit é compatível.")
-                
-                st.divider()
+                # --- Download do PDF ---
+                pdf_buffer = gerar_pdf(
+                    nome_cliente, cidade_selecionada_fmt, tensao, tipo_ligacao,
+                    carga_instalada, faixa_nome, disjuntor, potencia_max_str
+                )
                 st.download_button(
                     label="📄 Baixar Relatório em PDF",
-                    data=gerar_pdf(
-                        nome_cliente, cidade_selecionada_fmt, tensao, tipo_ligacao,
-                        carga_instalada, faixa_nome, disjuntor, potencia_max_str
-                    ),
+                    data=pdf_buffer,
                     file_name=f"relatorio_{padronizar_nome(nome_cliente)}.pdf",
                     mime="application/pdf",
                     use_container_width=True
                 )
             else:
-                st.error("❌ Faixa não encontrada para os parâmetros informados.")
-                st.markdown("- Verifique a **carga instalada**.\n- Confirme se a **tensão** e **tipo de ligação** são válidos para a cidade.")
+                st.error("❌ Faixa não encontrada.")
+                st.markdown("- Verifique a carga instalada.\n- Confirme se a tensão e tipo de ligação são válidos.")
 
 else:
-    st.info("👈 Preencha os dados na barra lateral e clique em 'Gerar Análise' para começar.")
+    st.info("👈 Preencha os dados e clique em 'Gerar Análise' para começar.")
 
 st.caption("Desenvolvido por Vitória de Sales Sena ⚡")
