@@ -52,35 +52,27 @@ def parse_carga_range(range_str):
     except:
         return 0.0, 0.0
 
-# NOVA VERSÃO "À PROVA DE BALAS" DA FUNÇÃO
 def parse_potencia_numerica(texto_potencia):
-    """
-    Função super robusta para extrair o primeiro número de uma string.
-    Ignora letras, aspas e a maior parte do lixo.
-    """
+    """Função super robusta para extrair o primeiro número de uma string."""
     if not isinstance(texto_potencia, str):
         return None
-
-    # Procura por um padrão de número (dígitos com opcionalmente um ponto ou vírgula)
     match = re.search(r'[\d,.]+', texto_potencia)
-    
     if match:
         try:
-            # Pega o número encontrado, troca vírgula por ponto e converte para float
             numero_str = match.group(0).replace(',', '.')
             return float(numero_str)
         except (ValueError, TypeError):
             return None
     return None
 
-
+# VERSÃO CORRIGIDA DA FUNÇÃO DE GERAR PDF
 def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disjuntor, potencia_max):
-    # (Sua função de gerar PDF continua igual)
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
     pdf.set_text_color(255, 99, 71)
     pdf.cell(0, 10, "Relatório de Pré-Projeto Solar", ln=True, align='C')
+
     pdf.set_font("Arial", "", 12)
     pdf.set_text_color(0)
     pdf.ln(10)
@@ -90,16 +82,22 @@ def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disj
     pdf.cell(0, 10, f"Tensão da rede: {tensao}", ln=True)
     pdf.cell(0, 10, f"Tipo de ligação: {tipo_ligacao}", ln=True)
     pdf.cell(0, 10, f"Carga instalada: {carga:.2f} kW", ln=True)
+
     pdf.ln(5)
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 10, "Resultado da Análise:", ln=True)
     pdf.set_font("Arial", "", 12)
     pdf.cell(0, 10, f"Categoria: {categoria}", ln=True)
     pdf.cell(0, 10, f"Disjuntor recomendado: {disjuntor} A", ln=True)
-    if potencia_max and potencia_max.strip() != "-":
-        pdf.cell(0, 10, f"Potência máxima permitida para geração: {potencia_max}", ln=True)
+
+    # Garante que a variável seja um texto antes de usar métodos de texto
+    potencia_max_texto = str(potencia_max) 
+
+    if potencia_max_texto and potencia_max_texto.strip() not in ('', '-', 'nan'):
+        pdf.cell(0, 10, f"Potência máxima permitida para geração: {potencia_max_texto}", ln=True)
     else:
         pdf.cell(0, 10, "Não há limite de potência definido para esta categoria.", ln=True)
+
     buffer = io.BytesIO()
     pdf.output(buffer)
     buffer.seek(0)
@@ -145,7 +143,6 @@ if df_tensao is None or df_dados_tecnicos is None:
     st.stop()
 
 # --- Interface do Usuário ---
-# (Sua interface continua a mesma)
 try:
     st.sidebar.image("imagens/logo.png", width=200)
 except Exception:
@@ -221,19 +218,8 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
                 st.write(f"**Categoria**: `{faixa_nome}`")
                 st.write(f"**Disjuntor recomendado**: `{disjuntor} A`")
                 
-                # NOVO BLOCO DE DIAGNÓSTICO FINAL
-                with st.expander("🕵️‍♀️ DIAGNÓSTICO FINAL (Clique aqui) 🕵️‍♀️"):
-                    valor_lido_raw = resultado.get('potencia_maxima_geracao_str', 'NÃO ENCONTRADO')
-                    st.warning("Abaixo está o valor EXATO que o programa leu do seu CSV.")
-                    st.code(repr(valor_lido_raw), language="python")
-                    st.info(f"O tipo deste dado é: {type(valor_lido_raw)}")
-                    
-                    resultado_parse = parse_potencia_numerica(valor_lido_raw)
-                    st.success(f"A nova função 'à prova de balas' converteu isso para o número: {resultado_parse}")
-
-
                 # Bloco que mostra a potência máxima (original)
-                if pd.notna(potencia_max_str) and potencia_max_str.strip() not in ('', '-'):
+                if pd.notna(potencia_max_str) and str(potencia_max_str).strip() not in ('', '-'):
                     st.subheader("🔆 Potência Máxima Permitida para Geração")
                     st.info(f"Potência máxima para **{faixa_nome}**:")
                     st.success(f"## {potencia_max_str}")
@@ -261,7 +247,13 @@ if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="prim
                     nome_cliente, cidade_selecionada_fmt, tensao, tipo_ligacao,
                     carga_instalada, faixa_nome, disjuntor, potencia_max_str
                 )
-                st.download_button(...) # Sua função de download
+                st.download_button(
+                    label="📄 Baixar Relatório em PDF",
+                    data=pdf_buffer,
+                    file_name=f"relatorio_{padronizar_nome(nome_cliente)}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
             else:
                 st.error("❌ Faixa não encontrada.")
                 st.markdown("- Verifique a carga instalada.\n- Confirme se a tensão e tipo de ligação são válidos.")
