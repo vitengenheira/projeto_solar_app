@@ -247,12 +247,12 @@ if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary")
 
                     if limite_numerico is not None:
                         if potencia_kit_kwp <= limite_numerico:
-                            st.success(f"**APROVADO:** O kit de {potencia_kit_kwp:.2f} kWp está dentro do limite de {limite_numerico:.2f} kWp.")
+                            st.success(f"**APROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp está dentro do limite de {limite_numerico:.2f} kWp.")
                             st.balloons()
                         else:
-                            st.error(f"**REPROVADO:** O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp.")
+                            st.error(f"**REPROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp.")
                     else:
-                        st.success(f"**APROVADO:** O kit de {potencia_kit_kwp:.2f} kWp é compatível, pois não há limite de potência para esta categoria.")
+                        st.success(f"**APROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp é compatível, pois não há limite de potência para esta categoria.")
 
                 # --- Download do PDF ---
                 pdf_buffer = gerar_pdf(
