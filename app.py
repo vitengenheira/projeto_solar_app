@@ -154,7 +154,7 @@ if "220/127" in tensao and tipo_ligacao == "Monofásico":
     st.sidebar.warning("⚠️ Para tensão 220/127V, use pelo menos Bifásico.")
 
 # --- Lógica Principal ---
-st.title("⚡ Pré-Projeto Solar)
+st.title("⚡ Pré-Projeto Solar")
 
 if st.sidebar.button("🔍 Gerar Análise", use_container_width=True, type="primary"):
     if not nome_cliente.strip():
