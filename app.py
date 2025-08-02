@@ -113,7 +113,7 @@ def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disj
             if potencia_kit_kwp <= limite_numerico:
                 pdf.multi_cell(0, 10, f"APROVADO: O kit de {potencia_kit_kwp:.2f} kWp está dentro do limite de {limite_numerico:.2f} kWp.", ln=True)
             else:
-                pdf.multi_cell(0, 10, f"REPROVADO: O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp.", ln=True)
+                pdf.multi_cell(0, 10, f"REPROVADO: O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp para a categoria atual ({categoria}). É necessária uma readequação.", ln=True)
         else:
             pdf.multi_cell(0, 10, f"APROVADO: O kit de {potencia_kit_kwp:.2f} kWp é compatível (sem limite definido).", ln=True)
 
@@ -155,8 +155,6 @@ def carregar_dados():
         st.error("Erro: Coluna de potência máxima não encontrada.")
         return None, None
         
-    ### ALTERAÇÃO 1: Criar uma coluna numérica para busca da potência ###
-    # Isso facilita a busca por uma categoria compatível depois
     df_dados_tecnicos['limite_numerico_busca'] = df_dados_tecnicos['potencia_maxima_geracao_str'].apply(parse_potencia_numerica)
 
 
@@ -192,7 +190,7 @@ carga_instalada = st.sidebar.number_input("Informe a carga instalada (kW):", min
 tipo_ligacao = st.sidebar.radio("Tipo de ligação:", ["Monofásico", "Bifásico", "Trifásico"])
 
 if "220/127" in tensao and tipo_ligacao == "Monofásico":
-    st.sidebar.warning("⚠️ Para tensão 220/127V, use pelo menos Bifásico.")
+    st.sidebar.warning("⚠️ Para tensão 220/127V, geralmente é necessário ao menos ligação Bifásica para Geração Distribuída.")
 
 st.sidebar.header("Dados do Kit Solar")
 potencia_kit_kwp = st.sidebar.number_input(
@@ -296,30 +294,56 @@ if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary")
                             st.success(f"**APROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp está dentro do limite de {limite_numerico:.2f} kWp.")
                             st.balloons()
                         else:
-                            ### ALTERAÇÃO 2: Lógica para encontrar e sugerir a solução ###
                             st.error(f"**REPROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp para a categoria atual (`{faixa_nome}`).")
-
-                            # Busca por uma categoria que aceite a potência do kit desejado
-                            df_solucao = df_dados_tecnicos[
+                            
+                            ### ALTERAÇÃO PRINCIPAL: LÓGICA DE BUSCA POR UPGRADE DE LIGAÇÃO ###
+                            
+                            # 1. Tentar encontrar solução na mesma ligação
+                            df_solucao_mesma_ligacao = df_dados_tecnicos[
                                 (df_dados_tecnicos["tensao"] == tensao) &
                                 (df_dados_tecnicos["categoria"].isin(categorias_permitidas)) &
                                 (df_dados_tecnicos["limite_numerico_busca"] >= potencia_kit_kwp)
-                            ].sort_values(by="carga_min_kw") # Ordena para pegar a próxima categoria disponível
+                            ].sort_values(by="carga_min_kw")
 
-                            if not df_solucao.empty:
-                                solucao_sugerida = df_solucao.iloc[0]
-                                solucao_categoria = solucao_sugerida["categoria"]
-                                solucao_carga_min = solucao_sugerida["carga_min_kw"]
-                                solucao_carga_max = solucao_sugerida["carga_max_kw"]
-
+                            if not df_solucao_mesma_ligacao.empty:
+                                # Solução encontrada mudando apenas a categoria
+                                solucao = df_solucao_mesma_ligacao.iloc[0]
                                 st.info(
-                                    f"💡 **Solução Sugerida:**\n\n"
-                                    f"Para aprovar um kit de **{potencia_kit_kwp:.2f} kWp**, a unidade consumidora precisa ser reclassificada para a categoria **`{solucao_categoria}`**."
-                                    f" Isso exige o aumento da carga instalada para uma faixa entre **{solucao_carga_min:.2f} kW** e **{solucao_carga_max:.2f} kW**."
+                                    f"💡 **Solução Sugerida (mesma ligação):**\n\n"
+                                    f"Para aprovar um kit de **{potencia_kit_kwp:.2f} kWp**, a unidade precisa ser reclassificada para a categoria **`{solucao['categoria']}`**."
+                                    f" Isso exige uma carga instalada entre **{solucao['carga_min_kw']:.2f} kW** e **{solucao['carga_max_kw']:.2f} kW**."
                                 )
                             else:
-                                st.warning(f"Para a tensão de **{tensao}** e ligação **{tipo_ligacao}**, não foi encontrada uma categoria superior que suporte os **{potencia_kit_kwp:.2f} kWp** desejados.")
+                                # 2. Se não achou, procurar em ligações superiores
+                                tipos_de_upgrade = []
+                                if tipo_ligacao == "Monofásico":
+                                    tipos_de_upgrade = ["Bifásico", "Trifásico"]
+                                elif tipo_ligacao == "Bifásico":
+                                    tipos_de_upgrade = ["Trifásico"]
+                                
+                                solucao_encontrada_upgrade = False
+                                for tipo_upgrade in tipos_de_upgrade:
+                                    if tipo_upgrade in mapa_ligacao:
+                                        categorias_upgrade = mapa_ligacao[tipo_upgrade]
+                                        df_solucao_upgrade = df_dados_tecnicos[
+                                            (df_dados_tecnicos["tensao"] == tensao) &
+                                            (df_dados_tecnicos["categoria"].isin(categorias_upgrade)) &
+                                            (df_dados_tecnicos["limite_numerico_busca"] >= potencia_kit_kwp)
+                                        ].sort_values(by="carga_min_kw")
 
+                                        if not df_solucao_upgrade.empty:
+                                            solucao = df_solucao_upgrade.iloc[0]
+                                            st.info(
+                                                f"💡 **Solução Sugerida (com upgrade de ligação):**\n\n"
+                                                f"A potência de **{potencia_kit_kwp:.2f} kWp** não é suportada na ligação **{tipo_ligacao}**.\n\n"
+                                                f"É necessário solicitar à concessionária a **alteração para Ligação {tipo_upgrade}**. "
+                                                f"Com a nova ligação, a unidade deverá ser enquadrada na categoria **`{solucao['categoria']}`**, que exige uma carga instalada entre **{solucao['carga_min_kw']:.2f} kW** e **{solucao['carga_max_kw']:.2f} kW**."
+                                            )
+                                            solucao_encontrada_upgrade = True
+                                            break # Para a busca ao encontrar a primeira solução
+                                
+                                if not solucao_encontrada_upgrade:
+                                    st.warning(f"Não foi encontrada nenhuma categoria (nem em ligações superiores como Bifásico ou Trifásico) que suporte os **{potencia_kit_kwp:.2f} kWp** desejados para a tensão **{tensao}**.")
                     else:
                         st.success(f"**APROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp é compatível, pois não há limite de potência para esta categoria.")
 
