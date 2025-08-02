@@ -285,18 +285,7 @@ if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary")
                             st.error(f"**REPROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp.")
                     else:
                         st.success(f"**APROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp é compatível, pois não há limite de potência para esta categoria.")
-                st.subheader("🎯 Critério de Compensação Escolhido")
 
-                st.write(f"Critério principal: **{criterio}**")
-
-                    if criterio == "Porcentagem":
-                        st.write(f"Opção: {opcao_porcentagem}")
-                    if porcentagem_cliente is not None:
-                        st.write(f"Porcentagem definida pelo cliente: **{porcentagem_cliente:.1f}%**")
-                        elif criterio == "Prioridade":
-                            st.write(f"Opção: {opcao_prioridade}")
-                    if prioridade_cliente:
-                         st.write(f"Prioridade informada: **{prioridade_cliente}**")
 
                 # --- Download do PDF ---
                 pdf_buffer = gerar_pdf(
