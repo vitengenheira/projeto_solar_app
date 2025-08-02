@@ -65,7 +65,8 @@ def parse_potencia_numerica(texto_potencia):
             return None
     return None
 
-def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disjuntor, potencia_max, potencia_kit_kwp):
+### ALTERAÇÃO 1: Adicionado o parâmetro 'info_compensacao' na função do PDF ###
+def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disjuntor, potencia_max, potencia_kit_kwp, info_compensacao):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -81,6 +82,14 @@ def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disj
     pdf.cell(0, 10, f"Tensão da rede: {tensao}", ln=True)
     pdf.cell(0, 10, f"Tipo de ligação: {tipo_ligacao}", ln=True)
     pdf.cell(0, 10, f"Carga instalada: {carga:.2f} kW", ln=True)
+
+    ### ALTERAÇÃO 2: Nova seção no PDF para o critério de compensação ###
+    pdf.ln(5)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 10, "Critério de Compensação:", ln=True)
+    pdf.set_font("Arial", "", 12)
+    # Usamos multi_cell para o caso da descrição ser longa e quebrar a linha
+    pdf.multi_cell(0, 10, info_compensacao)
 
     pdf.ln(5)
     pdf.set_font("Arial", "B", 12)
@@ -192,37 +201,51 @@ potencia_kit_kwp = st.sidebar.number_input(
     help="Informe a potência de pico do kit que planeja instalar."
 )
 
+### ALTERAÇÃO 3: Lógica para capturar a nova opção de compensação ###
 st.sidebar.header("Critério de Compensação")
+
+# Variável que guardará o texto para o PDF
+info_compensacao_pdf = "Não informado"
 
 criterio = st.sidebar.radio(
     "Selecione o critério de compensação:",
-    ["Porcentagem", "Prioridade"]
+    ["Porcentagem", "Prioridade", "Não há compensação"] # Nova opção adicionada
 )
 
 if criterio == "Porcentagem":
     opcao_porcentagem = st.sidebar.radio(
         "Como será definida a porcentagem?",
-        ["Baseada no consumo", "Definida pelo cliente"]
+        ["Baseada no consumo", "Definida pelo cliente"],
+        key="perc"
     )
     if opcao_porcentagem == "Definida pelo cliente":
-        porcentagem_cliente =st.sidebar.text_input("Descreva a prioridade do cliente:")
+        porcentagem_cliente = st.sidebar.text_input("Descreva a porcentagem definida pelo cliente:")
+        # Formata o texto para o PDF
+        info_compensacao_pdf = f"Porcentagem: {porcentagem_cliente}" if porcentagem_cliente else "Porcentagem: Definida pelo cliente (descrição não informada)"
     else:
-        porcentagem_cliente = None
+        info_compensacao_pdf = "Porcentagem: Baseada no consumo"
 
 elif criterio == "Prioridade":
     opcao_prioridade = st.sidebar.radio(
         "Qual é a prioridade?",
-        ["Baseada no consumo", "Definida pelo cliente"]
+        ["Baseada no consumo", "Definida pelo cliente"],
+        key="prio"
     )
     if opcao_prioridade == "Definida pelo cliente":
         prioridade_cliente = st.sidebar.text_input("Descreva a prioridade do cliente:")
+        # Formata o texto para o PDF
+        info_compensacao_pdf = f"Prioridade: {prioridade_cliente}" if prioridade_cliente else "Prioridade: Definida pelo cliente (descrição não informada)"
     else:
-        prioridade_cliente = None
+        info_compensacao_pdf = "Prioridade: Baseada no consumo"
+
+elif criterio == "Não há compensação":
+    # Define o texto para a nova opção
+    info_compensacao_pdf = "Não há compensação de créditos."
+
 
 # --- Lógica Principal ---
 st.title("⚡ Pré-Projeto Solar")
 
-# BOTÃO SEM EMOJI PARA GARANTIR
 if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary"):
     if not nome_cliente.strip():
         st.sidebar.warning("Por favor, informe o nome do cliente.")
@@ -282,10 +305,12 @@ if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary")
 
 
                 # --- Download do PDF ---
+                ### ALTERAÇÃO 4: Passando a nova informação para a função do PDF ###
                 pdf_buffer = gerar_pdf(
                     nome_cliente, cidade_selecionada_fmt, tensao, tipo_ligacao,
                     carga_instalada, faixa_nome, disjuntor, potencia_max_str,
-                    potencia_kit_kwp
+                    potencia_kit_kwp,
+                    info_compensacao_pdf # Nova variável adicionada aqui
                 )
                 st.download_button(
                     label="📄 Baixar Relatório em PDF",
