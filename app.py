@@ -296,7 +296,7 @@ if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary")
                         else:
                             st.error(f"**REPROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp para a categoria atual (`{faixa_nome}`).")
                             
-                            ### ALTERAÇÃO PRINCIPAL: LÓGICA DE BUSCA POR UPGRADE DE LIGAÇÃO ###
+                            # --- LÓGICA DE BUSCA PELA SOLUÇÃO ---
                             
                             # 1. Tentar encontrar solução na mesma ligação
                             df_solucao_mesma_ligacao = df_dados_tecnicos[
@@ -306,12 +306,15 @@ if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary")
                             ].sort_values(by="carga_min_kw")
 
                             if not df_solucao_mesma_ligacao.empty:
-                                # Solução encontrada mudando apenas a categoria
                                 solucao = df_solucao_mesma_ligacao.iloc[0]
+                                ### ALTERAÇÃO 1: Adicionar a potência máxima na mensagem ###
+                                solucao_potencia_max_str = solucao.get('potencia_maxima_geracao_str', 'N/A')
                                 st.info(
                                     f"💡 **Solução Sugerida (mesma ligação):**\n\n"
-                                    f"Para aprovar um kit de **{potencia_kit_kwp:.2f} kWp**, a unidade precisa ser reclassificada para a categoria **`{solucao['categoria']}`**."
-                                    f" Isso exige uma carga instalada entre **{solucao['carga_min_kw']:.2f} kW** e **{solucao['carga_max_kw']:.2f} kW**."
+                                    f"Para aprovar um kit de **{potencia_kit_kwp:.2f} kWp**, a unidade precisa ser reclassificada, atendendo aos seguintes requisitos:\n"
+                                    f"- **Nova Categoria:** `{solucao['categoria']}`\n"
+                                    f"- **Carga Instalada Necessária:** Entre {solucao['carga_min_kw']:.2f} kW e {solucao['carga_max_kw']:.2f} kW.\n"
+                                    f"- **Novo Limite de Geração:** Com esta categoria, o limite de potência do kit será de **{solucao_potencia_max_str}**."
                                 )
                             else:
                                 # 2. Se não achou, procurar em ligações superiores
@@ -333,14 +336,18 @@ if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary")
 
                                         if not df_solucao_upgrade.empty:
                                             solucao = df_solucao_upgrade.iloc[0]
+                                            ### ALTERAÇÃO 2: Adicionar a potência máxima na mensagem de upgrade ###
+                                            solucao_potencia_max_str = solucao.get('potencia_maxima_geracao_str', 'N/A')
                                             st.info(
                                                 f"💡 **Solução Sugerida (com upgrade de ligação):**\n\n"
                                                 f"A potência de **{potencia_kit_kwp:.2f} kWp** não é suportada na ligação **{tipo_ligacao}**.\n\n"
-                                                f"É necessário solicitar à concessionária a **alteração para Ligação {tipo_upgrade}**. "
-                                                f"Com a nova ligação, a unidade deverá ser enquadrada na categoria **`{solucao['categoria']}`**, que exige uma carga instalada entre **{solucao['carga_min_kw']:.2f} kW** e **{solucao['carga_max_kw']:.2f} kW**."
+                                                f"É necessário solicitar à concessionária a **alteração para Ligação {tipo_upgrade}**. Com a nova ligação, a unidade deverá atender aos seguintes requisitos:\n"
+                                                f"- **Nova Categoria:** `{solucao['categoria']}`\n"
+                                                f"- **Carga Instalada Necessária:** Entre {solucao['carga_min_kw']:.2f} kW e {solucao['carga_max_kw']:.2f} kW.\n"
+                                                f"- **Novo Limite de Geração:** Com esta categoria, o limite de potência do kit será de **{solucao_potencia_max_str}**."
                                             )
                                             solucao_encontrada_upgrade = True
-                                            break # Para a busca ao encontrar a primeira solução
+                                            break
                                 
                                 if not solucao_encontrada_upgrade:
                                     st.warning(f"Não foi encontrada nenhuma categoria (nem em ligações superiores como Bifásico ou Trifásico) que suporte os **{potencia_kit_kwp:.2f} kWp** desejados para a tensão **{tensao}**.")
