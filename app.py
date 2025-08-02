@@ -202,13 +202,13 @@ potencia_kit_kwp = st.sidebar.number_input(
 )
 
 ### ALTERAÇÃO 3: Lógica para capturar a nova opção de compensação ###
-st.sidebar.header("Critério de Compensação")
+st.sidebar.header("Compensação")
 
 # Variável que guardará o texto para o PDF
 info_compensacao_pdf = "Não informado"
 
 criterio = st.sidebar.radio(
-    "Selecione o critério de compensação:",
+    "Selecione o tipo de compensação:",
     ["Porcentagem", "Prioridade", "Não há compensação"] # Nova opção adicionada
 )
 
