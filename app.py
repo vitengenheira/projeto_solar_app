@@ -86,7 +86,7 @@ def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disj
     ### ALTERAÇÃO 2: Nova seção no PDF para o critério de compensação ###
     pdf.ln(5)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "Critério de Compensação:", ln=True)
+    pdf.cell(0, 10, "Compensação:", ln=True)
     pdf.set_font("Arial", "", 12)
     # Usamos multi_cell para o caso da descrição ser longa e quebrar a linha
     pdf.multi_cell(0, 10, info_compensacao)
