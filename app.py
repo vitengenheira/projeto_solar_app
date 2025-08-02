@@ -192,6 +192,38 @@ potencia_kit_kwp = st.sidebar.number_input(
     help="Informe a potência de pico do kit que planeja instalar."
 )
 
+st.sidebar.header("Critério de Compensação")
+
+criterio = st.sidebar.radio(
+    "Selecione o critério de compensação:",
+    ["Porcentagem", "Prioridade"]
+)
+
+if criterio == "Porcentagem":
+    opcao_porcentagem = st.sidebar.radio(
+        "Como será definida a porcentagem?",
+        ["Baseada no consumo", "Definida pelo cliente"]
+    )
+    if opcao_porcentagem == "Definida pelo cliente":
+        porcentagem_cliente = st.sidebar.number_input(
+            "Informe a porcentagem desejada (%):",
+            min_value=0.0,
+            max_value=100.0,
+            step=1.0,
+            format="%.1f"
+        )
+    else:
+        porcentagem_cliente = None
+
+elif criterio == "Prioridade":
+    opcao_prioridade = st.sidebar.radio(
+        "Qual é a prioridade?",
+        ["Baseada no consumo", "Definida pelo cliente"]
+    )
+    if opcao_prioridade == "Definida pelo cliente":
+        prioridade_cliente = st.sidebar.text_input("Descreva a prioridade do cliente:")
+    else:
+        prioridade_cliente = None
 
 # --- Lógica Principal ---
 st.title("⚡ Pré-Projeto Solar")
@@ -253,6 +285,18 @@ if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary")
                             st.error(f"**REPROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp.")
                     else:
                         st.success(f"**APROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp é compatível, pois não há limite de potência para esta categoria.")
+                st.subheader("🎯 Critério de Compensação Escolhido")
+
+                st.write(f"Critério principal: **{criterio}**")
+
+                    if criterio == "Porcentagem":
+                        st.write(f"Opção: {opcao_porcentagem}")
+                    if porcentagem_cliente is not None:
+                        st.write(f"Porcentagem definida pelo cliente: **{porcentagem_cliente:.1f}%**")
+                        elif criterio == "Prioridade":
+                            st.write(f"Opção: {opcao_prioridade}")
+                    if prioridade_cliente:
+                         st.write(f"Prioridade informada: **{prioridade_cliente}**")
 
                 # --- Download do PDF ---
                 pdf_buffer = gerar_pdf(
