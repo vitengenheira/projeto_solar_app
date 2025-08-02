@@ -205,13 +205,7 @@ if criterio == "Porcentagem":
         ["Baseada no consumo", "Definida pelo cliente"]
     )
     if opcao_porcentagem == "Definida pelo cliente":
-        porcentagem_cliente = st.sidebar.number_input(
-            "Informe a porcentagem desejada (%):",
-            min_value=0.0,
-            max_value=100.0,
-            step=1.0,
-            format="%.1f"
-        )
+        porcentagem_cliente =st.sidebar.text_input("Descreva a prioridade do cliente:")
     else:
         porcentagem_cliente = None
 
