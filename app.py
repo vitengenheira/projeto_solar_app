@@ -65,7 +65,6 @@ def parse_potencia_numerica(texto_potencia):
             return None
     return None
 
-### ALTERAÇÃO 1: Adicionado o parâmetro 'info_compensacao' na função do PDF ###
 def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disjuntor, potencia_max, potencia_kit_kwp, info_compensacao):
     pdf = FPDF()
     pdf.add_page()
@@ -83,12 +82,10 @@ def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disj
     pdf.cell(0, 10, f"Tipo de ligação: {tipo_ligacao}", ln=True)
     pdf.cell(0, 10, f"Carga instalada: {carga:.2f} kW", ln=True)
 
-    ### ALTERAÇÃO 2: Nova seção no PDF para o critério de compensação ###
     pdf.ln(5)
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 10, "Compensação:", ln=True)
+    pdf.cell(0, 10, "Critério de Compensação:", ln=True)
     pdf.set_font("Arial", "", 12)
-    # Usamos multi_cell para o caso da descrição ser longa e quebrar a linha
     pdf.multi_cell(0, 10, info_compensacao)
 
     pdf.ln(5)
@@ -114,11 +111,11 @@ def gerar_pdf(nome_cliente, cidade, tensao, tipo_ligacao, carga, categoria, disj
 
         if limite_numerico is not None:
             if potencia_kit_kwp <= limite_numerico:
-                pdf.cell(0, 10, f"APROVADO: O kit de {potencia_kit_kwp:.2f} kWp está dentro do limite de {limite_numerico:.2f} kWp.", ln=True)
+                pdf.multi_cell(0, 10, f"APROVADO: O kit de {potencia_kit_kwp:.2f} kWp está dentro do limite de {limite_numerico:.2f} kWp.", ln=True)
             else:
-                pdf.cell(0, 10, f"REPROVADO: O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp.", ln=True)
+                pdf.multi_cell(0, 10, f"REPROVADO: O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp.", ln=True)
         else:
-            pdf.cell(0, 10, f"APROVADO: O kit de {potencia_kit_kwp:.2f} kWp é compatível (sem limite definido).", ln=True)
+            pdf.multi_cell(0, 10, f"APROVADO: O kit de {potencia_kit_kwp:.2f} kWp é compatível (sem limite definido).", ln=True)
 
     buffer = io.BytesIO()
     pdf.output(buffer)
@@ -157,6 +154,11 @@ def carregar_dados():
     else:
         st.error("Erro: Coluna de potência máxima não encontrada.")
         return None, None
+        
+    ### ALTERAÇÃO 1: Criar uma coluna numérica para busca da potência ###
+    # Isso facilita a busca por uma categoria compatível depois
+    df_dados_tecnicos['limite_numerico_busca'] = df_dados_tecnicos['potencia_maxima_geracao_str'].apply(parse_potencia_numerica)
+
 
     return df_tensao, df_dados_tecnicos
 
@@ -201,15 +203,13 @@ potencia_kit_kwp = st.sidebar.number_input(
     help="Informe a potência de pico do kit que planeja instalar."
 )
 
-### ALTERAÇÃO 3: Lógica para capturar a nova opção de compensação ###
-st.sidebar.header("Compensação")
+st.sidebar.header("Critério de Compensação")
 
-# Variável que guardará o texto para o PDF
 info_compensacao_pdf = "Não informado"
 
 criterio = st.sidebar.radio(
-    "Selecione o tipo de compensação:",
-    ["Porcentagem", "Prioridade", "Não há compensação"] # Nova opção adicionada
+    "Selecione o critério de compensação:",
+    ["Porcentagem", "Prioridade", "Não há compensação"]
 )
 
 if criterio == "Porcentagem":
@@ -220,7 +220,6 @@ if criterio == "Porcentagem":
     )
     if opcao_porcentagem == "Definida pelo cliente":
         porcentagem_cliente = st.sidebar.text_input("Descreva a porcentagem definida pelo cliente:")
-        # Formata o texto para o PDF
         info_compensacao_pdf = f"Porcentagem: {porcentagem_cliente}" if porcentagem_cliente else "Porcentagem: Definida pelo cliente (descrição não informada)"
     else:
         info_compensacao_pdf = "Porcentagem: Baseada no consumo"
@@ -233,13 +232,11 @@ elif criterio == "Prioridade":
     )
     if opcao_prioridade == "Definida pelo cliente":
         prioridade_cliente = st.sidebar.text_input("Descreva a prioridade do cliente:")
-        # Formata o texto para o PDF
         info_compensacao_pdf = f"Prioridade: {prioridade_cliente}" if prioridade_cliente else "Prioridade: Definida pelo cliente (descrição não informada)"
     else:
         info_compensacao_pdf = "Prioridade: Baseada no consumo"
 
 elif criterio == "Não há compensação":
-    # Define o texto para a nova opção
     info_compensacao_pdf = "Não há compensação de créditos."
 
 
@@ -299,18 +296,40 @@ if st.sidebar.button("Gerar Análise", use_container_width=True, type="primary")
                             st.success(f"**APROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp está dentro do limite de {limite_numerico:.2f} kWp.")
                             st.balloons()
                         else:
-                            st.error(f"**REPROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp.")
+                            ### ALTERAÇÃO 2: Lógica para encontrar e sugerir a solução ###
+                            st.error(f"**REPROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp excede o limite de {limite_numerico:.2f} kWp para a categoria atual (`{faixa_nome}`).")
+
+                            # Busca por uma categoria que aceite a potência do kit desejado
+                            df_solucao = df_dados_tecnicos[
+                                (df_dados_tecnicos["tensao"] == tensao) &
+                                (df_dados_tecnicos["categoria"].isin(categorias_permitidas)) &
+                                (df_dados_tecnicos["limite_numerico_busca"] >= potencia_kit_kwp)
+                            ].sort_values(by="carga_min_kw") # Ordena para pegar a próxima categoria disponível
+
+                            if not df_solucao.empty:
+                                solucao_sugerida = df_solucao.iloc[0]
+                                solucao_categoria = solucao_sugerida["categoria"]
+                                solucao_carga_min = solucao_sugerida["carga_min_kw"]
+                                solucao_carga_max = solucao_sugerida["carga_max_kw"]
+
+                                st.info(
+                                    f"💡 **Solução Sugerida:**\n\n"
+                                    f"Para aprovar um kit de **{potencia_kit_kwp:.2f} kWp**, a unidade consumidora precisa ser reclassificada para a categoria **`{solucao_categoria}`**."
+                                    f" Isso exige o aumento da carga instalada para uma faixa entre **{solucao_carga_min:.2f} kW** e **{solucao_carga_max:.2f} kW**."
+                                )
+                            else:
+                                st.warning(f"Para a tensão de **{tensao}** e ligação **{tipo_ligacao}**, não foi encontrada uma categoria superior que suporte os **{potencia_kit_kwp:.2f} kWp** desejados.")
+
                     else:
                         st.success(f"**APROVADO PARA ENVIO:** O kit de {potencia_kit_kwp:.2f} kWp é compatível, pois não há limite de potência para esta categoria.")
 
 
                 # --- Download do PDF ---
-                ### ALTERAÇÃO 4: Passando a nova informação para a função do PDF ###
                 pdf_buffer = gerar_pdf(
                     nome_cliente, cidade_selecionada_fmt, tensao, tipo_ligacao,
                     carga_instalada, faixa_nome, disjuntor, potencia_max_str,
                     potencia_kit_kwp,
-                    info_compensacao_pdf # Nova variável adicionada aqui
+                    info_compensacao_pdf
                 )
                 st.download_button(
                     label="📄 Baixar Relatório em PDF",
